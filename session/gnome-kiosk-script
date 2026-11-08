@@ -1,0 +1,6 @@
+#!/bin/sh
+# Smart TV login session (installed by smart-tv install.sh).
+# gnome-kiosk-script-session runs this file as a systemd user service and
+# restarts it if it ever quits.
+systemctl --user stop smart-tv.service 2>/dev/null
+exec /usr/bin/python3 "$HOME/.local/share/smart-tv/smart_tv.py" --session
