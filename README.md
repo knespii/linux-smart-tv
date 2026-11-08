@@ -1,177 +1,191 @@
-# Smart TV
+# Linux Smart TV
 
-Udělá z linuxového počítače chytrou televizi. Zmáčkni **Home** na ovladači a objeví se hlavní obrazovka v televizním stylu: vysoké skleněné karty **YouTube**, **Netflix**, **Steam**, **Heroic** a **Discord** nad rozmazanou tapetou tvé plochy, velké hodiny a tlačítko vypnutí. Všechno je animované (karty naletí, vybraná se zvětší a rozsvítí, pozadí se zabarví podle aplikace) a kreslí to grafická karta, takže to běží plynule i na 4K. Celé to ovládáš jen ovladačem, i uvnitř YouTube, Netflixu a Discordu.
+*[Česky](README.cs.md)*
 
-Funguje dvěma způsoby:
+Turn a Linux PC into a smart TV you control with a gamepad. Press **Home** on the controller and a TV-style home screen appears: tall glass cards for **YouTube**, **Netflix**, **Steam**, **Heroic** and **Discord** over a blurred copy of your wallpaper, a big clock and a power button. Everything is animated (cards fly in, the selected one grows and lights up, the background takes the app's color) and drawn on the GPU, so it stays smooth on a 4K screen. The gamepad works everywhere, even inside YouTube, Netflix and Discord.
 
-- **v běžném GNOME**: program běží na pozadí a Home otevře TV obrazovku přes celou plochu,
-- **jako samostatná relace „Smart TV“** na přihlašovací obrazovce: po přihlášení naskočí rovnou TV, žádný desktop.
+![Home screen](docs/home.png)
 
-*English: A Big Picture style "smart TV" home screen for Linux (GNOME, Wayland), driven by a gamepad: YouTube (TV interface), Netflix, Steam, Heroic, Discord. Works as a background service in GNOME or as its own login session (gnome-kiosk). No root for the basic install, no extra Python packages.*
-
-Nahrazuje [Gamepad Launcher](https://github.com/knespii/gamepad-launcher): umí všechno co on a instalace ho vypne.
-
-## Jak to funguje
-
-- Malý program na pozadí čte ovladač přímo z `/dev/input`.
-- **YouTube** se otevře v Google Chrome přes celou obrazovku v televizním rozhraní YouTube (to, co mají chytré televize), které je dělané pro šipky.
-- **Netflix** se otevře v Google Chrome přes celou obrazovku.
-- YouTube a Netflix mají každý svůj Chrome profil, takže přihlášení zůstane a nemíchá se s tvým běžným Chromem.
-- Webové stránky ani Discord ovladač neumí, takže když jsou v popředí, Smart TV převádí ovladač na **klávesnici a myš** (přes virtuální zařízení `/dev/uinput`).
-- Steam a Heroic ovladač umí, ty ho dostanou přímo.
-- **Discord** neumí startovat přes celou obrazovku a GNOME na Waylandu nedovolí cizímu programu jeho okno aktivovat ani zvětšit. Smart TV ho proto spouští přes XWayland (`--ozone-platform=x11`): jakmile se načte, vytáhne jeho okno dopředu a dá ho přes celou obrazovku, a totéž při každém návratu z hlavní obrazovky. Pokud Discord už běžel, spuštěný mimo Smart TV, Smart TV ho jednou restartuje (případný hovor se přeruší).
-- Najednou běží jen jedna streamovací aplikace, jako na televizi: spuštění Netflixu zavře YouTube.
-- Ovladač můžeš kdykoli odpojit a znovu připojit, Smart TV ho najde sám.
-
-## Ovládání
-
-### Na hlavní obrazovce
-
-| Tlačítko | Akce |
+| Control center over a playing video | On-screen keyboard |
 |---|---|
-| **Home** | otevřít / zavřít hlavní obrazovku |
-| **Home podržet 1 s** | otevřít hlavní obrazovku, když běží Steam (krátký stisk patří Steamu) |
-| **◀ ▶** (D-pad, levá páčka, LB/RB) | výběr |
-| **▲** | přejít na tlačítko vypnutí vpravo nahoře (**▼** zpět na aplikace) |
-| **A** nebo **Start** | spustit, nebo přepnout do běžící aplikace |
-| **Y** | zavřít vybranou běžící aplikaci |
-| **X** | ovládací centrum (hlasitost, přehrávání) |
-| **Select** (View) | rovnou otevřít menu Vypnout |
-| **B** | zpět / skrýt hlavní obrazovku |
+| ![Control center](docs/control-center.png) | ![On-screen keyboard](docs/keyboard.png) |
 
-Hlavní obrazovka jde ovládat i myší a klávesnicí (šipky, Enter, Esc, Y nebo Delete).
+It runs in two ways:
 
-### V YouTube, Netflixu a Discordu
+- **in your normal GNOME session**: a small background service; Home opens the TV screen over the desktop,
+- **as its own "Smart TV" login session**: pick it on the login screen and you get the TV screen straight away, no desktop.
 
-| Ovladač | Funguje jako |
+The user interface is in Czech (texts are at the top of `smart_tv.py` and in the view files).
+
+## How it works
+
+- A small background program reads the gamepad straight from `/dev/input`.
+- **YouTube** opens fullscreen in Google Chrome with YouTube's TV interface (the one smart TVs use), which is made for arrow keys.
+- **Netflix** opens fullscreen in Google Chrome.
+- YouTube and Netflix each get their own Chrome profile, so you stay signed in and it doesn't mix with your everyday Chrome. Chrome is always closed gracefully, so logins are saved.
+- Web pages and Discord don't understand a gamepad, so while they're in front, Smart TV turns the gamepad into a **keyboard and mouse** (a virtual `/dev/uinput` device).
+- Steam and Heroic support gamepads themselves and get it directly.
+- **Discord** can't start fullscreen, and on Wayland GNOME doesn't let one program focus or resize another one's window. So Smart TV starts Discord on XWayland (`--ozone-platform=x11`): once it's loaded, its window is brought to front and made fullscreen, and again every time you return to it. If Discord was already running (started outside Smart TV), it is restarted once (a call would drop).
+- Only one streaming app runs at a time, like on a TV: starting Netflix closes YouTube.
+- You can unplug and replug the gamepad any time, Smart TV finds it again.
+
+## Controls
+
+### Home screen
+
+| Button | Action |
 |---|---|
-| D-pad, levá páčka | šipky |
+| **Home** | open / close the home screen |
+| **Hold Home 1 s** | open the home screen while Steam runs (a short press belongs to Steam) |
+| **◀ ▶** (D-pad, left stick, LB/RB) | select |
+| **▲** | go to the power button, top right (**▼** back to the apps) |
+| **A** or **Start** | launch, or switch to the running app |
+| **Y** | close the selected running app |
+| **X** | control center (volume, playback) |
+| **Select** (View) | power menu |
+| **B** | back / hide the home screen |
+
+The home screen also works with a mouse and keyboard (arrows, Enter, Esc, Y or Delete).
+
+### Inside YouTube, Netflix and Discord
+
+| Gamepad | Acts as |
+|---|---|
+| D-pad, left stick | arrow keys |
 | **A** | Enter |
-| **B** | Esc (zpět) |
-| **X** | mezerník (pauza) |
-| **Y** | F (celá obrazovka); v Discordu přepne celou obrazovku / okno |
-| **LB** / **RB** | Shift+Tab / Tab (skákání mezi tlačítky) |
-| pravá páčka | kurzor myši |
-| **RT** nebo stisk pravé páčky | levé tlačítko myši |
-| **LT** | pravé tlačítko myši |
-| **Select** (View) | klávesnice na obrazovce |
-| **Start** (Menu) | ovládací centrum (hlasitost, přehrávání) |
-| **Home** | zpět na hlavní obrazovku |
+| **B** | Esc (back) |
+| **X** | Space (pause) |
+| **Y** | F (fullscreen); in Discord toggles fullscreen / window |
+| **LB** / **RB** | Shift+Tab / Tab (jump between buttons) |
+| right stick | mouse pointer |
+| **RT** or right stick click | left mouse button |
+| **LT** | right mouse button |
+| **Select** (View) | on-screen keyboard |
+| **Start** (Menu) | control center (volume, playback) |
+| **Home** | back to the home screen |
 
-### Ovládací centrum
+### Control center
 
-Panel přes běžící aplikaci, video hraje dál. V YouTube, Netflixu a Discordu ho otevřeš tlačítkem **Start**, odkudkoli jinde (třeba ve Steamu nebo ve hře) přes hlavní obrazovku tlačítkem **X**. Ukazuje, co se přehrává (náhled videa, název, kanál, časovou osu), a ovládá hlasitost, ztlumení, výstup zvuku (reproduktory / monitor přes HDMI / sluchátka) a přehrávání.
+A panel over the running app; the video keeps playing behind it. Open it with **Start** in YouTube, Netflix and Discord, or from anywhere else (Steam, a game) with **X** on the home screen. It shows what's playing (thumbnail, title, channel, progress) and controls the volume, mute, audio output (speakers / HDMI monitor / headphones) and playback.
 
-| Tlačítko | Akce |
+| Button | Action |
 |---|---|
-| **◀ ▶** | vybrat ovládací prvek |
-| **▲ ▼** | hlasitost (podržením plynule) |
-| **A** | potvrdit (na − / + podržením plynule) |
-| **X** | pauza / přehrát |
-| **Y** | ztlumit |
-| **LB** / **RB** | předchozí / další video |
-| **B** nebo **Start** | zavřít |
+| **◀ ▶** | select a control |
+| **▲ ▼** | volume (hold for continuous) |
+| **A** | press (hold on − / + for continuous) |
+| **X** | pause / play |
+| **Y** | mute |
+| **LB** / **RB** | previous / next video |
+| **B** or **Start** | close |
 
-Co se přehrává, se zjišťuje přes MPRIS (Chrome ho poskytuje pro YouTube i Netflix); když aplikace nic nehlásí, ovládací centrum ukáže jen zvuk. Hlasitost jde přes PipeWire (`wpctl`, `pactl`).
+What's playing comes from MPRIS (Chrome provides it for YouTube and Netflix); if the app reports nothing, the control center shows just the audio controls. Volume goes through PipeWire (`wpctl`, `pactl`).
 
-### Klávesnice na obrazovce
+### On-screen keyboard
 
-V YouTube, Netflixu a Discordu ji otevřeš tlačítkem **Select**. Vyjede zespodu jako na televizi: text píšeš do jejího políčka a **Hotovo** ho vloží do aplikace (kam právě míří kurzor, třeba do chatu nebo vyhledávání), **Odeslat** ho vloží a zmáčkne Enter (v Discordu odešle zprávu).
+Open it with **Select** in YouTube, Netflix and Discord. It slides up like on a TV: you type into its own field, **Hotovo** (Done) puts the text into the app (wherever the cursor is, e.g. a chat or a search box), **Odeslat** (Send) puts it in and presses Enter (sends the message in Discord).
 
-| Tlačítko | Akce |
+| Button | Action |
 |---|---|
-| D-pad / levá páčka | pohyb po klávesách (podržením se opakuje) |
-| **A** | napsat vybranou klávesu |
-| **B** | smazat znak (podržením maže dál) |
-| **X** | mezera |
-| **Y** | velké písmeno (dvakrát = velká písmena trvale) |
-| **LB** / **RB** | přepnout znaky: `abc`, `čšř`, `?123` |
-| **Start** | odeslat (vložit + Enter) |
-| **Select** | zavřít bez psaní |
+| D-pad / left stick | move between keys (repeats while held) |
+| **A** | type the selected key |
+| **B** | delete a character (keeps deleting while held) |
+| **X** | space |
+| **Y** | capital letter (twice = caps lock) |
+| **LB** / **RB** | switch layers: `abc`, `čšř` (Czech letters), `?123` |
+| **Start** | send (paste + Enter) |
+| **Select** | close without typing |
 
-Psát jde i na opravdové klávesnici. Text se vkládá přes schránku (Ctrl+V); tvůj původní obsah schránky se po vložení zase vrátí. YouTube má v televizním rozhraní vlastní klávesnici, tam se schránka nemusí chytit.
+A real keyboard works too. The text is pasted through the clipboard (Ctrl+V), and your previous clipboard content is put back afterwards. YouTube's TV interface has its own keyboard; pasting may not work there.
 
-### Menu Vypnout
+### Power menu
 
-Otevřeš ho tlačítkem vypnutí vpravo nahoře (**▲** a **A**) nebo tlačítkem **Select**.
+Open it with the power button at the top right (**▲**, then **A**) or with **Select**.
 
-- **Uspat**
-- **Vypnout PC**: ptá se na potvrzení, první **A** dlaždici zčervená, druhé **A** PC vypne
-- **Zavřít vše**: ukončí Steam, Heroic, Discord, YouTube i Netflix
-- **Do GNOME** (jen v relaci Smart TV): odhlásí tě, na přihlašovací obrazovce pak vybereš GNOME
+- **Uspat** (Suspend)
+- **Vypnout PC** (Power off): asks for confirmation, the first **A** turns the tile red, the second **A** powers off
+- **Zavřít vše** (Close all): quits Steam, Heroic, Discord, YouTube and Netflix
+- **Do GNOME** (only in the Smart TV session): logs out, so you can pick GNOME on the login screen
 
-## První přihlášení
+## First sign-in
 
-Přihlášení děláš jen jednou, pak si ho Chrome pamatuje.
+You sign in only once, Chrome remembers it.
 
-- **YouTube**: v televizním rozhraní vyber *Přihlásit se*. Ukáže kód, ten zadáš v telefonu na [youtube.com/activate](https://youtube.com/activate).
-- **Netflix**: e-mail a heslo napiš na klávesnici (ovladačem se text píše špatně).
-- **Discord**: přihlášení QR kódem z aplikace Discord v telefonu.
+- **YouTube**: choose *Sign in* in the TV interface. It shows a code; enter it at [youtube.com/activate](https://youtube.com/activate) on your phone or in your normal browser.
+- **Netflix**: type your e-mail and password with a keyboard (or the on-screen keyboard).
+- **Discord**: sign in with the QR code from the Discord phone app.
 
-## Požadavky
+## Requirements
 
-- Linux se systemd a GNOME (testováno na Debianu 13, GNOME 48, Wayland)
-- Python 3 s GTK 4 (`python3-gi`, `gir1.2-gtk-4.0`), na GNOME už je
-- `wl-clipboard` (pro vkládání textu z klávesnice na obrazovce)
-- písmo Inter (`fonts-inter`) vypadá nejlíp, jinak se použije Cantarell
-- uživatel ve skupině `input` (čtení ovladače a virtuální klávesnice přes `/dev/uinput`)
-- **Google Chrome** z deb balíčku (`google-chrome`), jen v něm jede Netflix
-- Steam (`steam`), Heroic a Discord jako Flatpak (`com.heroicgameslauncher.hgl`, `com.discordapp.Discord`)
+- Linux with systemd and GNOME (tested on Debian 13, GNOME 48, Wayland)
+- Python 3 with GTK 4 (`python3-gi`, `gir1.2-gtk-4.0`), already there on GNOME
+- `wl-clipboard` (to paste text from the on-screen keyboard)
+- the Inter font (`fonts-inter`) looks best, Cantarell is used otherwise
+- your user in the `input` group (reading the gamepad and the virtual keyboard through `/dev/uinput`)
+- **Google Chrome** from the deb package (`google-chrome`), the only browser Netflix runs in
+- Steam (`steam`), Heroic and Discord as Flatpaks (`com.heroicgameslauncher.hgl`, `com.discordapp.Discord`)
 
-Testováno s ovladačem **8BitDo Ultimate 2C Wireless**. Mělo by fungovat s jakýmkoli ovladačem, který posílá tlačítko `BTN_MODE` (Xbox, PlayStation a další).
+No extra Python packages and no root for the basic install.
 
-## Instalace
+Tested with an **8BitDo Ultimate 2C Wireless** controller. It should work with any controller that sends the `BTN_MODE` button (Xbox, PlayStation and others).
+
+## Install
 
 ```bash
-./install.sh
+git clone https://github.com/knespii/linux-smart-tv.git
 ```
 
-Pokud nejsi ve skupině `input`:
+```bash
+cd linux-smart-tv && ./install.sh
+```
+
+If you're not in the `input` group:
 
 ```bash
 sudo usermod -aG input $USER
 ```
 
-Pak se odhlas a znovu přihlas a spusť `./install.sh` znovu.
+Then log out, log back in and run `./install.sh` again.
 
-### Relace „Smart TV“ na přihlašovací obrazovce
+Smart TV replaces [Gamepad Launcher](https://github.com/knespii/gamepad-launcher): it does everything that one does, and the install switches it off (its files stay).
 
-Potřebuje `sudo`, nainstaluje balíčky `gnome-kiosk` a `gnome-kiosk-script-session` a přidá relaci „Smart TV“:
+### "Smart TV" login session
+
+Needs `sudo`: installs the `gnome-kiosk` and `gnome-kiosk-script-session` packages and adds a "Smart TV" session:
 
 ```bash
 ./install-session.sh
 ```
 
-Pak se odhlas, na přihlašovací obrazovce klikni na své jméno, vpravo dole na ozubené kolečko vyber **Smart TV** a přihlas se. Zpátky do GNOME se dostaneš přes **Vypnout → Do GNOME**.
+Then log out, click your name on the login screen, pick **Smart TV** under the gear icon at the bottom right and log in. Get back to GNOME with **Power → Do GNOME**.
 
-## Odinstalace
+## Uninstall
 
 ```bash
 ./uninstall.sh
 ```
 
-Zapne zpátky Gamepad Launcher, pokud byl nainstalovaný. Přihlášení do YouTube a Netflixu nechá v `~/.local/share/smart-tv/profiles`. Relaci z přihlašovací obrazovky odebereš:
+Turns Gamepad Launcher back on if it was installed. YouTube and Netflix logins stay in `~/.local/share/smart-tv/profiles`. Remove the login-screen session with:
 
 ```bash
 sudo rm /usr/share/wayland-sessions/smart-tv.desktop
 ```
 
-## Úpravy
+## Customizing
 
-Aplikace jsou na začátku souboru `smart_tv.py` v seznamu `APPS`, menu Vypnout v seznamu `POWER`. Vzhled (barvy aplikací, velikosti karet, délky animací) je na začátku `home_view.py`. Pozadí je rozmazaná tapeta z GNOME a avatar tvůj obrázek účtu. Třeba Twitch přidáš takhle:
+The apps are in the `APPS` list at the top of `smart_tv.py`, the power menu in `POWER`. The look (app colors, card sizes, animation lengths) is at the top of `home_view.py`. The background is your blurred GNOME wallpaper and the avatar is your account picture. Adding Twitch, for example:
 
 ```python
 {
     "id": "twitch", "name": "Twitch", "theme": "discord",
-    "sub": "Živé přenosy",
+    "sub": "Live streams",
     "kind": "web", "url": "https://www.twitch.tv",
     "glyph": "T", "pad": "keys",
 },
 ```
 
-Po úpravě spusť znovu `./install.sh`.
+Run `./install.sh` again after a change.
 
-### Užitečné příkazy
+### Useful commands
 
 ```bash
 systemctl --user status smart-tv
@@ -181,22 +195,23 @@ systemctl --user status smart-tv
 journalctl --user -u smart-tv -f
 ```
 
-V relaci Smart TV běží program jako služba `org.gnome.Kiosk.Script`:
+In the Smart TV session the program runs as the `org.gnome.Kiosk.Script` service:
 
 ```bash
 journalctl --user -u org.gnome.Kiosk.Script -f
 ```
 
-## Na co je dobré vědět
+## Good to know
 
-- **Netflix jede v Chrome na Linuxu nejvýš v 720p.** Je to omezení Netflixu, nejde obejít.
-- YouTube pozná televizi podle „user-agenta“. Kdyby jednou místo televizního rozhraní ukázal běžný web, stačí v `smart_tv.py` změnit `TV_USER_AGENT`.
-- Když přepneš na YouTube nebo Netflix, které už běží v pozadí, načtou se znovu (na Waylandu nejde cizí okno vytáhnout dopředu). Steam, Heroic a Discord se jen přepnou.
+- **Netflix in Chrome on Linux plays at 720p at most.** That's a Netflix limit and can't be worked around.
+- YouTube recognizes a TV by its user agent. If it ever shows the normal website instead of the TV interface, change `TV_USER_AGENT` in `smart_tv.py`.
+- Switching to YouTube or Netflix while it runs in the background reloads it (on Wayland another program's window can't be raised from outside). Steam, Heroic and Discord just come to front.
+- The control center and the on-screen keyboard are maximized windows, not fullscreen ones: GNOME draws fullscreen windows as opaque, which would hide the video behind them.
 
-## Nároky na výkon
+## Resource use
 
-Skoro žádné. Program většinu času spí, probudí se při stisku tlačítka a každé 2 s zkontroluje nově připojený ovladač. Hlavní obrazovka kreslí jen během animací (pak stojí) a do her nijak nezasahuje.
+Almost none. The program sleeps most of the time, wakes up on a button press and checks for a newly connected gamepad every 2 s. The home screen only draws while something animates, and nothing touches your games.
 
-## Licence
+## License
 
 MIT
