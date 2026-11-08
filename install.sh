@@ -33,9 +33,17 @@ fi
 
 mkdir -p "$DEST/profiles" "$UNIT_DIR" "$(dirname "$KIOSK")"
 install -m 755 "$SRC/smart_tv.py" "$DEST/smart_tv.py"
-install -m 644 "$SRC/vpad.py" "$SRC/home_view.py" "$SRC/keyboard_view.py" "$SRC/control_center.py" "$SRC/x11win.py" "$DEST/"
+install -m 644 "$SRC/vpad.py" "$SRC/home_view.py" "$SRC/keyboard_view.py" "$SRC/control_center.py" \
+    "$SRC/x11win.py" "$SRC/ha_client.py" "$SRC/ha_view.py" "$DEST/"
 rm -f "$DEST/style.css"
 install -m 644 "$SRC/smart-tv.service" "$UNIT_DIR/smart-tv.service"
+
+# Home Assistant settings (address + token); never overwritten, only readable by you.
+HA_CONF="$HOME/.config/smart-tv/homeassistant.conf"
+if [ ! -e "$HA_CONF" ]; then
+    mkdir -p "$(dirname "$HA_CONF")"
+    install -m 600 "$SRC/config/homeassistant.conf" "$HA_CONF"
+fi
 
 # Script for the "Smart TV" login session. Keep a backup of someone else's script.
 if [ -e "$KIOSK" ] && ! grep -q "smart-tv" "$KIOSK"; then
@@ -56,6 +64,9 @@ systemctl --user enable smart-tv.service
 systemctl --user restart smart-tv.service
 
 echo "Hotovo. Zmáčkni Home na ovladači."
+if ! grep -qE '^\s*token\s*=\s*\S' "$HA_CONF"; then
+    echo "Home Assistant: doplň adresu a token do $HA_CONF (návod je přímo v souboru)."
+fi
 if [ ! -e /usr/share/wayland-sessions/smart-tv.desktop ]; then
     echo "Samostatnou relaci \"Smart TV\" na přihlašovací obrazovce přidáš:  ./install-session.sh"
 fi

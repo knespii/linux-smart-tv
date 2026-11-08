@@ -31,7 +31,7 @@ ACCENTS = {
     "youtube": (1.00, 0.15, 0.25), "netflix": (0.90, 0.10, 0.12),
     "steam": (0.40, 0.75, 0.96), "heroic": (0.10, 0.80, 0.80),
     "discord": (0.42, 0.47, 1.00), "power": (1.00, 0.68, 0.30),
-    "danger": (1.00, 0.30, 0.30),
+    "danger": (1.00, 0.30, 0.30), "homeassistant": (0.09, 0.74, 0.95),
 }
 RUNNING = (0.49, 1.00, 0.63)
 
@@ -564,7 +564,7 @@ class HomeView:
     def draw_cards(self, snap, now, hh, s):
         tv = self.tv
         entries = tv.entries
-        cy = hh * 0.53
+        cy = hh * 0.51
         if tv.menu != "main":
             a = ease_out((now - self.menu_t) / OPEN_S)
             top = cy - SEL_H / 2 - 120
@@ -657,8 +657,8 @@ class HomeView:
     def draw_clock(self, snap, hh):
         now = time.localtime()
         date = f"{DAYS[now.tm_wday]}, {now.tm_mday}. {MONTHS[now.tm_mon - 1]}"
-        draw_text(snap, date, W - SIDE, hh - 132, 34, (1, 1, 1, 0.80), Pango.Weight.LIGHT, align=1.0)
-        draw_text(snap, time.strftime("%H:%M", now), W - SIDE + 6, hh - 300, 150,
+        draw_text(snap, date, W - SIDE, hh - 122, 34, (1, 1, 1, 0.80), Pango.Weight.LIGHT, align=1.0)
+        draw_text(snap, time.strftime("%H:%M", now), W - SIDE + 6, hh - 285, 150,
                   (1, 1, 1, 0.95), Pango.Weight.THIN, align=1.0)
 
     def draw_hints(self, snap, hh):

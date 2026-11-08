@@ -1,5 +1,5 @@
 [Unit]
-Description=Smart TV (Home button -> YouTube / Netflix / Steam / Heroic / Discord)
+Description=Smart TV (Home button -> YouTube / Netflix / Steam / Heroic / Discord / Home Assistant)
 PartOf=graphical-session.target
 After=graphical-session.target
 

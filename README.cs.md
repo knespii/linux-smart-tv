@@ -4,7 +4,7 @@
 
 ![Hlavní obrazovka](docs/home.png)
 
-Udělá z linuxového počítače chytrou televizi. Zmáčkni **Home** na ovladači a objeví se hlavní obrazovka v televizním stylu: vysoké skleněné karty **YouTube**, **Netflix**, **Steam**, **Heroic** a **Discord** nad rozmazanou tapetou tvé plochy, velké hodiny a tlačítko vypnutí. Všechno je animované (karty naletí, vybraná se zvětší a rozsvítí, pozadí se zabarví podle aplikace) a kreslí to grafická karta, takže to běží plynule i na 4K. Celé to ovládáš jen ovladačem, i uvnitř YouTube, Netflixu a Discordu.
+Udělá z linuxového počítače chytrou televizi. Zmáčkni **Home** na ovladači a objeví se hlavní obrazovka v televizním stylu: vysoké skleněné karty **YouTube**, **Netflix**, **Steam**, **Heroic**, **Discord** a **Domácnost** (Home Assistant) nad rozmazanou tapetou tvé plochy, velké hodiny a tlačítko vypnutí. Všechno je animované (karty naletí, vybraná se zvětší a rozsvítí, pozadí se zabarví podle aplikace) a kreslí to grafická karta, takže to běží plynule i na 4K. Celé to ovládáš jen ovladačem, i uvnitř YouTube, Netflixu a Discordu.
 
 Funguje dvěma způsoby:
 
@@ -22,6 +22,7 @@ Nahrazuje [Gamepad Launcher](https://github.com/knespii/gamepad-launcher): umí 
 - Webové stránky ani Discord ovladač neumí, takže když jsou v popředí, Smart TV převádí ovladač na **klávesnici a myš** (přes virtuální zařízení `/dev/uinput`).
 - Steam a Heroic ovladač umí, ty ho dostanou přímo.
 - **Discord** neumí startovat přes celou obrazovku a GNOME na Waylandu nedovolí cizímu programu jeho okno aktivovat ani zvětšit. Smart TV ho proto spouští přes XWayland (`--ozone-platform=x11`): jakmile se načte, vytáhne jeho okno dopředu a dá ho přes celou obrazovku, a totéž při každém návratu z hlavní obrazovky. Pokud Discord už běžel, spuštěný mimo Smart TV, Smart TV ho jednou restartuje (případný hovor se přeruší).
+- **Domácnost** otevře vlastní panel Smart TV pro Home Assistant: místnosti jako řádky velkých dlaždic se světly, zásuvkami, žaluziemi, termostaty, reproduktory, zámky a scénami. S Home Assistantem mluví přímo přes jeho WebSocket API a mění se živě. Z panelu se dá otevřít i celé webové rozhraní Home Assistantu v Chromu.
 - Najednou běží jen jedna streamovací aplikace, jako na televizi: spuštění Netflixu zavře YouTube.
 - Ovladač můžeš kdykoli odpojit a znovu připojit, Smart TV ho najde sám.
 
@@ -93,6 +94,23 @@ V YouTube, Netflixu a Discordu ji otevřeš tlačítkem **Select**. Vyjede zespo
 
 Psát jde i na opravdové klávesnici. Text se vkládá přes schránku (Ctrl+V); tvůj původní obsah schránky se po vložení zase vrátí. YouTube má v televizním rozhraní vlastní klávesnici, tam se schránka nemusí chytit.
 
+### Domácnost (Home Assistant)
+
+![Panel Domácnost](docs/home-assistant.png)
+
+Otevřeš ho kartou **Domácnost**. Každá místnost (oblast) z Home Assistantu je jeden řádek, vedle názvu je její teplota a vlhkost. Zařízení patří do místnosti přímo nebo přes své zařízení; scény, skripty a tlačítka bez místnosti jsou v řádku *Scény a skripty*, ostatní bez místnosti v *Ostatní*. Skryté entity a entity nastavení / diagnostiky se nezobrazí, nedostupné jsou zašedlé. Zapnutá dlaždice svítí barvou zařízení (barevná žárovka svou vlastní barvou) a proužek dole ukazuje jas, polohu nebo hlasitost.
+
+| Tlačítko | Co udělá |
+|---|---|
+| D-pad / levá páčka | výběr dlaždice (při podržení opakuje) |
+| **A** | světlo, zásuvka, ventilátor: zapnout / vypnout; žaluzie: otevřít / zavřít / zastavit; termostat: zapnout / vypnout; reproduktor: přehrát / pauza; scéna, skript, tlačítko: spustit; zámek: zamknout / odemknout (nejdřív se zeptá, provede to až druhé **A**) |
+| **LB** / **RB** | méně / víc (podržením plynule): jas, poloha žaluzií, cílová teplota, hlasitost, rychlost ventilátoru |
+| **▲** na prvním řádku | tlačítko *Celý Home Assistant* (webové rozhraní) |
+| **Y** | celé webové rozhraní Home Assistantu v Chromu |
+| **B** nebo **Home** | zpět na hlavní obrazovku |
+
+Změna se ukáže hned a Home Assistant ji vzápětí potvrdí. Panel je připojený jen když je otevřený (a minutu potom, aby další otevření bylo okamžité).
+
 ### Menu Vypnout
 
 Otevřeš ho tlačítkem vypnutí vpravo nahoře (**▲** a **A**) nebo tlačítkem **Select**.
@@ -110,6 +128,22 @@ Přihlášení děláš jen jednou, pak si ho Chrome pamatuje.
 - **Netflix**: e-mail a heslo napiš na klávesnici (ovladačem se text píše špatně).
 - **Discord**: přihlášení QR kódem z aplikace Discord v telefonu.
 
+### Připojení Home Assistantu
+
+Panel potřebuje adresu tvého Home Assistantu a dlouhodobý přístupový token:
+
+1. V Home Assistantu otevři svůj profil (vlevo dole), záložku *Zabezpečení* a dole u *Dlouhodobé přístupové tokeny* vytvoř token.
+2. Vlož ho do `~/.config/smart-tv/homeassistant.conf` (vytvoří ho `./install.sh`, číst ho můžeš jen ty) a zkontroluj adresu:
+
+   ```
+   url = https://homeassistant.local:8123
+   token = eyJhbGciOi...
+   ```
+
+3. Otevři kartu *Domácnost* znovu.
+
+Volitelně ve stejném souboru: `favorites = light.obyvak, scene.kino` (napřed řádek *Oblíbené*), `hide = switch.neco` (nezobrazí se), `verify_ssl = no` (certifikát podepsaný sám sebou). Bez tokenu ti tyhle kroky ukáže přímo panel. Celé webové rozhraní (**Y**) má vlastní Chrome profil, přihlásíš se v něm jednou.
+
 ## Požadavky
 
 - Linux se systemd a GNOME (testováno na Debianu 13, GNOME 48, Wayland)
@@ -119,6 +153,7 @@ Přihlášení děláš jen jednou, pak si ho Chrome pamatuje.
 - uživatel ve skupině `input` (čtení ovladače a virtuální klávesnice přes `/dev/uinput`)
 - **Google Chrome** z deb balíčku (`google-chrome`), jen v něm jede Netflix
 - Steam (`steam`), Heroic a Discord jako Flatpak (`com.heroicgameslauncher.hgl`, `com.discordapp.Discord`)
+- Home Assistant (nepovinné), dostupný z počítače
 
 Testováno s ovladačem **8BitDo Ultimate 2C Wireless**. Mělo by fungovat s jakýmkoli ovladačem, který posílá tlačítko `BTN_MODE` (Xbox, PlayStation a další).
 
@@ -156,7 +191,7 @@ Pak se odhlas, na přihlašovací obrazovce klikni na své jméno, vpravo dole n
 ./uninstall.sh
 ```
 
-Zapne zpátky Gamepad Launcher, pokud byl nainstalovaný. Přihlášení do YouTube a Netflixu nechá v `~/.local/share/smart-tv/profiles`. Relaci z přihlašovací obrazovky odebereš:
+Zapne zpátky Gamepad Launcher, pokud byl nainstalovaný. Přihlášení do YouTube a Netflixu nechá v `~/.local/share/smart-tv/profiles`, nastavení Home Assistantu v `~/.config/smart-tv`. Relaci z přihlašovací obrazovky odebereš:
 
 ```bash
 sudo rm /usr/share/wayland-sessions/smart-tv.desktop
@@ -164,7 +199,7 @@ sudo rm /usr/share/wayland-sessions/smart-tv.desktop
 
 ## Úpravy
 
-Aplikace jsou na začátku souboru `smart_tv.py` v seznamu `APPS`, menu Vypnout v seznamu `POWER`. Vzhled (barvy aplikací, velikosti karet, délky animací) je na začátku `home_view.py`. Pozadí je rozmazaná tapeta z GNOME a avatar tvůj obrázek účtu. Třeba Twitch přidáš takhle:
+Aplikace jsou na začátku souboru `smart_tv.py` v seznamu `APPS`, menu Vypnout v seznamu `POWER`. Barvy a velikosti dlaždic panelu Domácnost jsou na začátku `ha_view.py`, jeho nastavení v `~/.config/smart-tv/homeassistant.conf`. Vzhled (barvy aplikací, velikosti karet, délky animací) je na začátku `home_view.py`. Pozadí je rozmazaná tapeta z GNOME a avatar tvůj obrázek účtu. Třeba Twitch přidáš takhle:
 
 ```python
 {
@@ -195,13 +230,14 @@ journalctl --user -u org.gnome.Kiosk.Script -f
 
 ## Na co je dobré vědět
 
+- Token Home Assistantu dává plný přístup k tvému Home Assistantu. Je uložený jen v `~/.config/smart-tv/homeassistant.conf`, který můžeš číst jen ty; zrušíš ho smazáním tokenu v profilu Home Assistantu.
 - **Netflix jede v Chrome na Linuxu nejvýš v 720p.** Je to omezení Netflixu, nejde obejít.
 - YouTube pozná televizi podle „user-agenta“. Kdyby jednou místo televizního rozhraní ukázal běžný web, stačí v `smart_tv.py` změnit `TV_USER_AGENT`.
 - Když přepneš na YouTube nebo Netflix, které už běží v pozadí, načtou se znovu (na Waylandu nejde cizí okno vytáhnout dopředu). Steam, Heroic a Discord se jen přepnou.
 
 ## Nároky na výkon
 
-Skoro žádné. Program většinu času spí, probudí se při stisku tlačítka a každé 2 s zkontroluje nově připojený ovladač. Hlavní obrazovka kreslí jen během animací (pak stojí) a do her nijak nezasahuje.
+Skoro žádné. Program většinu času spí, probudí se při stisku tlačítka a každé 2 s zkontroluje nově připojený ovladač. Hlavní obrazovka kreslí jen během animací (pak stojí), spojení s Home Assistantem je otevřené jen když panel používáš a do her nijak nezasahuje.
 
 ## Licence
 

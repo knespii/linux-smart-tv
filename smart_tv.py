@@ -3,7 +3,8 @@
 
 Reads gamepads straight from /dev/input (user must be in the 'input' group).
 The Home button opens a fullscreen home screen with YouTube, Netflix, Steam,
-Heroic and Discord. YouTube and Netflix run as Google Chrome kiosk windows.
+Heroic, Discord and Home Assistant. YouTube and Netflix run as Google Chrome
+kiosk windows; Home Assistant has its own TV panel (ha_view.py).
 While a web app or Discord is in front, the gamepad is turned into arrow keys
 and a mouse through a virtual /dev/uinput device (see vpad.py).
 
@@ -32,6 +33,8 @@ from gi.repository import Gdk, GLib, Gtk  # noqa: E402
 
 import home_view  # noqa: E402
 import control_center  # noqa: E402
+import ha_client  # noqa: E402
+import ha_view  # noqa: E402
 import keyboard_view  # noqa: E402
 import vpad  # noqa: E402
 import x11win  # noqa: E402
@@ -52,6 +55,8 @@ TV_USER_AGENT = ("Mozilla/5.0 (SMART-TV; LINUX; Tizen 6.5) AppleWebKit/537.36 "
 # flatpak / proc: how to tell the app is running (flatpak id / process name).
 # close: command that quits the app nicely (otherwise flatpak kill / stop its scope).
 # icon: theme icon names; icon_file: image file; glyph: text drawn when no icon is found.
+# panel: opens our own TV panel instead (Home Assistant, ha_view.py); its web UI is
+#        the "web" part, opened from the panel, with the address from the panel's settings.
 APPS = [
     {
         "id": "youtube", "name": "YouTube", "theme": "youtube",
@@ -92,6 +97,13 @@ APPS = [
         "ready_log": ("~/.var/app/com.discordapp.Discord/config/discord/logs/renderer_js.log",
                       b"[GatewaySocket] [READY]"),
         "buttons": {"Y": "toggle_fullscreen"},   # instead of typing "f" into the chat
+    },
+    {
+        "id": "homeassistant", "name": "Domácnost", "theme": "homeassistant",
+        "sub": "Home Assistant",
+        "panel": True, "kind": "web", "url": ha_client.DEFAULT_URL,   # url: see ha_client.py
+        "icon_file": ha_client.ICON, "icon": ["go-home-symbolic"], "symbolic": True,
+        "glyph": "⌂", "pad": "keys",
     },
 ]
 
@@ -297,6 +309,8 @@ class SmartTV:
         self.procs = []           # started processes, to reap them
         self.osk = None           # KeyboardView while the on-screen keyboard is open
         self.cc = None            # ControlCenter while it is open
+        self.ha = None            # HomeAssistantView while the Home Assistant panel is open
+        self.ha_client = None     # its connection, kept a while after the panel closes
         self.osk_held = {}        # source -> direction held on the keyboard (for repeat)
         self.osk_rep_id = None
         self.osk_rep_dir = None
@@ -352,7 +366,7 @@ class SmartTV:
         return True
 
     def want_grab(self):
-        return bool(self.window) or bool(self.osk) or bool(self.cc) or self.mapping
+        return bool(self.window) or bool(self.osk) or bool(self.cc) or bool(self.ha) or self.mapping
 
     def apply_grab(self):
         on = self.want_grab()
@@ -366,6 +380,9 @@ class SmartTV:
                     self.keyboard_cancel()
                 if self.cc:
                     self.close_control_center()
+                if self.ha:
+                    self.close_ha(home=True)
+                    return
                 self.home_pressed()
             elif value == 0:
                 self.cancel_hold()
@@ -373,6 +390,8 @@ class SmartTV:
             self.handle_osk(pad, etype, code, value)
         elif self.cc:
             self.handle_cc(pad, etype, code, value)
+        elif self.ha:
+            self.handle_ha(pad, etype, code, value)
         elif self.window:
             self.handle_menu(pad, etype, code, value)
         elif self.mapping:
@@ -421,14 +440,15 @@ class SmartTV:
         if self.window and not self.busy:
             self.refresh()
         self.update_mapping()
-        if self.session and not self.window and not self.osk and not self.cc and not self.can_leave():
+        if (self.session and not self.window and not self.osk and not self.cc and not self.ha
+                and not self.can_leave()):
             self.open()
         return True
 
     def update_mapping(self):
         app = APP_BY_ID.get(self.current)
-        want = bool(self.vpad and not self.window and not self.osk and not self.cc and app and app.get("pad") == "keys"
-                    and app["id"] in self.running)
+        want = bool(self.vpad and not self.window and not self.osk and not self.cc and not self.ha
+                    and app and app.get("pad") == "keys" and app["id"] in self.running)
         if want != self.mapping:
             self.mapping = want
             if not want:
@@ -560,18 +580,15 @@ class SmartTV:
 
     def launch_app(self, app):
         aid = app["id"]
+        if app.get("panel"):
+            self.open_ha(app)
+            return
         if aid in self.running and self.current == aid:
             print(f"back to {aid}", flush=True)
             self.close()            # close() also brings X11 apps back to front
             return
         if app.get("kind") == "web":
-            # One web app at a time. A running one is restarted, because we
-            # can't bring its window to front from outside on Wayland.
-            self.spawn(chrome_cmd(app), unit=scope_name(app), quit_web=self.running_web_apps())
-            for a in APPS:
-                if a.get("kind") == "web":
-                    self.running.discard(a["id"])
-                    self.launched.pop(a["id"], None)
+            self.start_web(app)
         elif aid in self.running and app.get("x11_class"):
             if x11win.main_window(app["x11_class"]):
                 self.front_later(app)    # we can raise it ourselves
@@ -594,6 +611,15 @@ class SmartTV:
         self.launched[aid] = time.monotonic()
         self.running.add(aid)
         self.splash(f"Spouštím {app['name']}", app)
+
+    def start_web(self, app):
+        # One web app at a time. A running one is restarted, because we
+        # can't bring its window to front from outside on Wayland.
+        self.spawn(chrome_cmd(app), unit=scope_name(app), quit_web=self.running_web_apps())
+        for a in APPS:
+            if a.get("kind") == "web":
+                self.running.discard(a["id"])
+                self.launched.pop(a["id"], None)
 
     # --- X11 apps we focus and make fullscreen ourselves (Discord) ----------
     def watch_ready(self, app):
@@ -637,8 +663,8 @@ class SmartTV:
         """Focus the app's X11 window and make it fullscreen. Retries while it isn't there yet."""
         if self.current != app["id"] or time.monotonic() > state["until"]:
             return False
-        if self.window:
-            return True  # home screen is open, try again once it's gone
+        if self.window or self.ha:
+            return True  # home screen / panel is open, try again once it's gone
         win = x11win.main_window(app["x11_class"])
         if not win:
             return True
@@ -652,7 +678,7 @@ class SmartTV:
         return app.get("theme", "") if app else ""
 
     def open_keyboard(self):
-        if self.osk or self.window or not self.vpad:
+        if self.osk or self.window or self.ha or not self.vpad:
             return
         for pad, _ in self.pads.values():
             self.release_pad(pad)
@@ -749,24 +775,28 @@ class SmartTV:
                 if act:
                     self.osk.action(act)
         elif etype == EV_ABS:
-            if code == ABS_HAT0X:
-                self.osk_hold("hatx", "left" if value < 0 else "right" if value > 0 else None)
-            elif code == ABS_HAT0Y:
-                self.osk_hold("haty", "up" if value < 0 else "down" if value > 0 else None)
-            elif code in (ABS_X, ABS_Y):
-                v = pad.stick_value(code, value)
-                neg, pos = ("left", "right") if code == ABS_X else ("up", "down")
-                old = self.osk_held.get(("ls", code))
-                if v <= -STICK_ON or (old == neg and v < -STICK_OFF):
-                    self.osk_hold(("ls", code), neg)
-                elif v >= STICK_ON or (old == pos and v > STICK_OFF):
-                    self.osk_hold(("ls", code), pos)
-                else:
-                    self.osk_hold(("ls", code), None)
+            self.overlay_dirs(pad, code, value)
+
+    def overlay_dirs(self, pad, code, value):
+        """D-pad and left stick in an overlay: directions that repeat while held."""
+        if code == ABS_HAT0X:
+            self.osk_hold("hatx", "left" if value < 0 else "right" if value > 0 else None)
+        elif code == ABS_HAT0Y:
+            self.osk_hold("haty", "up" if value < 0 else "down" if value > 0 else None)
+        elif code in (ABS_X, ABS_Y):
+            v = pad.stick_value(code, value)
+            neg, pos = ("left", "right") if code == ABS_X else ("up", "down")
+            old = self.osk_held.get(("ls", code))
+            if v <= -STICK_ON or (old == neg and v < -STICK_OFF):
+                self.osk_hold(("ls", code), neg)
+            elif v >= STICK_ON or (old == pos and v > STICK_OFF):
+                self.osk_hold(("ls", code), pos)
+            else:
+                self.osk_hold(("ls", code), None)
 
     def overlay(self):
-        """The open overlay (keyboard or control center) that gets repeated actions."""
-        return self.osk or self.cc
+        """The open overlay (keyboard, control center, Home Assistant) that gets repeated actions."""
+        return self.osk or self.cc or self.ha
 
     # --- control center -----------------------------------------------------
     def player_pids(self):
@@ -774,7 +804,7 @@ class SmartTV:
         return set(browser_pids(app)) if app and app.get("kind") == "web" else set()
 
     def open_control_center(self):
-        if self.cc or self.osk:
+        if self.cc or self.osk or self.ha:
             return
         if self.window:   # from the home screen: hide it first, then show over the app
             self.close()
@@ -819,20 +849,7 @@ class SmartTV:
                 if act:
                     self.cc.action(act)
         elif etype == EV_ABS:
-            if code == ABS_HAT0X:
-                self.osk_hold("hatx", "left" if value < 0 else "right" if value > 0 else None)
-            elif code == ABS_HAT0Y:
-                self.osk_hold("haty", "up" if value < 0 else "down" if value > 0 else None)
-            elif code in (ABS_X, ABS_Y):
-                v = pad.stick_value(code, value)
-                neg, pos = ("left", "right") if code == ABS_X else ("up", "down")
-                old = self.osk_held.get(("ls", code))
-                if v <= -STICK_ON or (old == neg and v < -STICK_OFF):
-                    self.osk_hold(("ls", code), neg)
-                elif v >= STICK_ON or (old == pos and v > STICK_OFF):
-                    self.osk_hold(("ls", code), pos)
-                else:
-                    self.osk_hold(("ls", code), None)
+            self.overlay_dirs(pad, code, value)
 
     def osk_hold(self, source, act):
         """A direction (or B) pressed / released; held ones repeat like on a TV."""
@@ -861,6 +878,82 @@ class SmartTV:
             return False
         self.overlay().action(self.osk_rep_dir)
         return True
+
+    # --- Home Assistant panel -------------------------------------------------
+    def open_ha(self, app):
+        if self.ha:
+            return
+        cfg = ha_client.load_config()
+        client = self.ha_client
+        if client is None or client.key() != (cfg["url"], cfg["token"], cfg["verify_ssl"]):
+            if client:
+                client.stop()
+            client = self.ha_client = ha_client.HAClient(cfg)
+        else:
+            client.cfg = cfg   # favorites / hidden may have changed
+        client.start()
+        for pad, _ in self.pads.values():
+            self.release_pad(pad)
+        if self.window:
+            self.close()       # the home screen fades out under the panel
+        self.ha = ha_view.HomeAssistantView(self, client, app)
+        client.on_change = self.ha.data_changed
+        self.osk_held = {}
+        self.ha.show()
+        self.update_mapping()
+        print("home assistant panel open", flush=True)
+
+    def close_ha(self, home=False, view=None):
+        if not self.ha or (view is not None and view is not self.ha):
+            return False
+        ha, self.ha = self.ha, None
+        self.osk_held = {}
+        if self.osk_rep_id:
+            GLib.source_remove(self.osk_rep_id)
+            self.osk_rep_id = None
+        ha.close()
+        if self.ha_client:
+            self.ha_client.on_change = None
+            self.ha_client.stop_later()
+        if home:
+            self.open(select="homeassistant")
+            return False
+        self.update_mapping()
+        app = APP_BY_ID.get(self.current)
+        if app and app.get("x11_class"):
+            self.front_later(app, 250)
+        return False
+
+    def ha_web(self):
+        """The full Home Assistant web UI in Chrome, from the panel."""
+        if not self.ha or self.ha.splash_t is not None:
+            return
+        app = APP_BY_ID["homeassistant"]
+        if app["id"] in self.running and self.current == app["id"]:
+            self.close_ha()    # it's right behind the panel
+            return
+        url = self.ha_client.cfg["url"] if self.ha_client else app["url"]
+        self.start_web(dict(app, url=url))
+        print("launching homeassistant web", flush=True)
+        self.current = app["id"]
+        self.launched[app["id"]] = time.monotonic()
+        self.running.add(app["id"])
+        self.ha.start_splash("Otevírám Home Assistant")
+        GLib.timeout_add(LAUNCH_SPLASH_MS, self.close_ha, False, self.ha)
+
+    def handle_ha(self, pad, etype, code, value):
+        if etype == EV_KEY:
+            if code in (BTN_TL, BTN_TR):   # held LB / RB keep changing brightness etc.
+                self.osk_hold(code, ("less" if code == BTN_TL else "more") if value else None)
+            elif value == 1:
+                if code in (BTN_SOUTH, BTN_START):
+                    self.ha.action("activate")
+                elif code == BTN_EAST:
+                    self.close_ha(home=True)
+                elif code == BTN_Y:
+                    self.ha_web()
+        elif etype == EV_ABS:
+            self.overlay_dirs(pad, code, value)
 
     def toggle_fullscreen(self):
         app = APP_BY_ID.get(self.current) or {}
@@ -936,15 +1029,15 @@ class SmartTV:
             return APPS
         return [e for e in POWER if self.session or not e.get("session_only")]
 
-    def open(self):
+    def open(self, select=None):
         if self.window:
             return
         self.cancel_hold()
         self.running = self.running_ids()
         self.menu, self.focus, self.armed, self.busy = "main", "cards", False, False
         self.selected = min(self.main_selected, len(APPS) - 1)
-        if self.current in APP_BY_ID:
-            self.selected = APPS.index(APP_BY_ID[self.current])
+        if (select or self.current) in APP_BY_ID:
+            self.selected = APPS.index(APP_BY_ID[select or self.current])
         self.window = home_view.HomeView(self)
         self.window.show()
         self.update_mapping()   # takes the gamepad for the menu
