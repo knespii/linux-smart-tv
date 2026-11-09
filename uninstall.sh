@@ -7,6 +7,7 @@ DEST="$HOME/.local/share/smart-tv"
 KIOSK="$HOME/.local/bin/gnome-kiosk-script"
 
 systemctl --user disable --now smart-tv.service 2>/dev/null || true
+python3 "$(cd "$(dirname "$0")" && pwd)/shortcuts.py" uninstall 2>/dev/null || true
 rm -f "$HOME/.config/systemd/user/smart-tv.service"
 rm -f "$DEST/smart_tv.py" "$DEST/vpad.py" "$DEST/home_view.py" "$DEST/x11win.py" "$DEST/keyboard_view.py" "$DEST/control_center.py" "$DEST/style.css" \
       "$DEST/ha_client.py" "$DEST/ha_view.py" "$DEST/homeassistant.png"

@@ -59,11 +59,16 @@ if systemctl --user is-enabled --quiet gamepad-launcher.service 2>/dev/null \
     echo "Gamepad Launcher vypnutý (soubory zůstaly, uninstall.sh ho zase zapne)."
 fi
 
+# Keyboard shortcuts: Super+Alt+T home screen, Super+Alt+H Home Assistant (GNOME custom shortcuts).
+if command -v gsettings >/dev/null; then
+    python3 "$SRC/shortcuts.py" install || echo "Upozornění: klávesové zkratky se nepodařilo nastavit."
+fi
+
 systemctl --user daemon-reload
 systemctl --user enable smart-tv.service
 systemctl --user restart smart-tv.service
 
-echo "Hotovo. Zmáčkni Home na ovladači."
+echo "Hotovo. Zmáčkni Home na ovladači, nebo Super+Alt+T na klávesnici (Super+Alt+H = Domácnost)."
 if ! grep -qE '^\s*token\s*=\s*\S' "$HA_CONF"; then
     echo "Home Assistant: doplň adresu a token do $HA_CONF (návod je přímo v souboru)."
 fi

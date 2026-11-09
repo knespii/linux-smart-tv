@@ -44,6 +44,17 @@ Nahrazuje [Gamepad Launcher](https://github.com/knespii/gamepad-launcher): umí 
 
 Hlavní obrazovka jde ovládat i myší a klávesnicí (šipky, Enter, Esc, Y nebo Delete).
 
+### Klávesové zkratky
+
+Když nemáš po ruce ovladač (v běžném GNOME):
+
+| Klávesy | Co udělá |
+|---|---|
+| **Super+Alt+T** | otevře / zavře hlavní obrazovku |
+| **Super+Alt+H** | otevře / zavře panel Domácnost (Home Assistant) |
+
+Nekolidují se zkratkami GNOME ani běžných rozšíření; `./install.sh` navíc zkontroluje, že klávesy nejsou obsazené, a když jsou, nechá zkratku bez kláves. Jsou to běžné vlastní zkratky, takže je změníš v *Nastavení → Klávesnice → Vlastní zkratky*. Hlavní obrazovka se pak ovládá šipkami, Enter, Esc a Y; panel Domácnost šipkami, Enter (přepnout), + / − (jas atd.), Y (celý Home Assistant) a Esc (zpět).
+
 ### V YouTube, Netflixu a Discordu
 
 | Ovladač | Funguje jako |

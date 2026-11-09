@@ -50,6 +50,17 @@ The user interface is in Czech (texts are at the top of `smart_tv.py` and in the
 
 The home screen also works with a mouse and keyboard (arrows, Enter, Esc, Y or Delete).
 
+### Keyboard shortcuts
+
+To get there without the gamepad (normal GNOME session):
+
+| Keys | Action |
+|---|---|
+| **Super+Alt+T** | open / close the home screen |
+| **Super+Alt+H** | open / close the Home Assistant panel |
+
+They don't clash with GNOME's own shortcuts or the common extensions; `./install.sh` checks the keys aren't taken and leaves a shortcut without a key if they are. They are ordinary custom shortcuts, so you can change them in *Settings → Keyboard → Custom Shortcuts*. In the panel: arrows to move, Enter to toggle, + / − for brightness etc., Y for the full web UI, Esc to go back.
+
 ### Inside YouTube, Netflix and Discord
 
 | Gamepad | Acts as |

@@ -12,6 +12,10 @@ and a mouse through a virtual /dev/uinput device (see vpad.py).
   smart_tv.py --session  Smart TV login session (gnome-kiosk): the home screen
                          comes back whenever the app in front quits
   smart_tv.py --open     background mode, but show the home screen right away
+
+Keyboard shortcuts (set up by install.sh) send the running service a signal:
+  SIGUSR1  open / close the home screen       (Super+Alt+T)
+  SIGUSR2  open / close the Home Assistant panel (Super+Alt+H)
 """
 import fcntl
 import glob
@@ -171,6 +175,7 @@ MOUSE_TICK_MS = 16
 HOLD_MS = 1000
 LAUNCH_SPLASH_MS = 1200   # "Spouštím…" stays this long before the home screen hides
 LAUNCH_GRACE_S = 15       # a just launched app counts as running while it starts up
+SHORTCUT_DEBOUNCE_S = 0.5 # GNOME sometimes runs a shortcut's command twice
 
 
 def eviocgabs(axis):
@@ -314,6 +319,7 @@ class SmartTV:
         self.osk_held = {}        # source -> direction held on the keyboard (for repeat)
         self.osk_rep_id = None
         self.osk_rep_dir = None
+        self.shortcut_t = 0.0
         try:
             self.vpad = vpad.VirtualPad()
         except OSError as e:
@@ -1000,6 +1006,31 @@ class SmartTV:
         self.close()
         return False
 
+    # --- keyboard shortcuts (signals from install.sh's GNOME shortcuts) ----------
+    def shortcut(self, what):
+        """Super+Alt+T toggles the home screen, Super+Alt+H the Home Assistant panel."""
+        now = time.monotonic()
+        if now - self.shortcut_t < SHORTCUT_DEBOUNCE_S:
+            return
+        self.shortcut_t = now
+        print(f"shortcut: {what}", flush=True)
+        if self.osk:
+            self.keyboard_cancel()
+        if self.cc:
+            self.close_control_center()
+        if what == "ha":
+            if self.ha:
+                self.close_ha()
+            else:
+                self.open_ha(APP_BY_ID["homeassistant"])
+        elif self.ha:
+            self.close_ha(home=True)
+        elif self.window:
+            if self.can_leave() and not self.busy:
+                self.close()
+        else:
+            self.open()
+
     # --- home screen -----------------------------------------------------
     def home_pressed(self):
         if self.window:
@@ -1217,6 +1248,8 @@ def main():
     loop = GLib.MainLoop()
     for sig in (signal.SIGTERM, signal.SIGINT):
         GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, sig, lambda: loop.quit() or False)
+    GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGUSR1, lambda: tv.shortcut("home") or True)
+    GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGUSR2, lambda: tv.shortcut("ha") or True)
     loop.run()
     tv.shutdown()
 
